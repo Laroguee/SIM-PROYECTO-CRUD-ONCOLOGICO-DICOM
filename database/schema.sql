@@ -1,0 +1,133 @@
+DROP DATABASE IF EXISTS ehr_oncologico;
+CREATE DATABASE ehr_oncologico;
+USE ehr_oncologico;
+
+-- 1. PROFESIONAL_SALUD
+CREATE TABLE PROFESIONAL_SALUD (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    jvpm VARCHAR(20) UNIQUE,
+    especialidad ENUM('Oncología Médica', 'Radiología', 'Cirugía Oncológica', 'Enfermería', 'Administración') NOT NULL,
+    usuario VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2. PACIENTE
+CREATE TABLE PACIENTE (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    identificador_fhir VARCHAR(100) UNIQUE,
+    documento_identidad VARCHAR(20) UNIQUE,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    fecha_nacimiento DATE,
+    genero ENUM('male', 'female', 'other', 'unknown'),
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 3. DIAGNOSTICO_ICDO
+CREATE TABLE DIAGNOSTICO_ICDO (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    codigo VARCHAR(20) NOT NULL,
+    descripcion VARCHAR(255) NOT NULL,
+    eje ENUM('Topografico', 'Morfologico') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 4. CITA
+CREATE TABLE CITA (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    paciente_id INT NOT NULL,
+    profesional_id INT NOT NULL,
+    fecha_hora DATETIME NOT NULL,
+    tipo_cita ENUM('Consulta Especialista', 'Estudio Radiologico', 'Sesion Quimioterapia', 'Comite Oncologico') NOT NULL,
+    motivo VARCHAR(255),
+    estado ENUM('Programada', 'Completada', 'Cancelada', 'Ausente') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES PACIENTE(id) ON DELETE CASCADE,
+    FOREIGN KEY (profesional_id) REFERENCES PROFESIONAL_SALUD(id) ON DELETE CASCADE
+);
+
+-- 5. DIAGNOSTICO
+CREATE TABLE DIAGNOSTICO (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    paciente_id INT NOT NULL,
+    profesional_id INT NOT NULL,
+    icdo_id INT NOT NULL,
+    fecha_diagnostico DATE NOT NULL,
+    observaciones TEXT,
+    aprobado_comite BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES PACIENTE(id) ON DELETE CASCADE,
+    FOREIGN KEY (profesional_id) REFERENCES PROFESIONAL_SALUD(id) ON DELETE CASCADE,
+    FOREIGN KEY (icdo_id) REFERENCES DIAGNOSTICO_ICDO(id) ON DELETE CASCADE
+);
+
+-- 6. CARACTERISTICA_TUMOR
+CREATE TABLE CARACTERISTICA_TUMOR (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    diagnostico_id INT NOT NULL,
+    localizacion VARCHAR(100),
+    tipo_histologico VARCHAR(100),
+    grado_tumoral VARCHAR(50),
+    receptores VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (diagnostico_id) REFERENCES DIAGNOSTICO(id) ON DELETE CASCADE
+);
+
+-- 7. ESTADIAJE
+CREATE TABLE ESTADIAJE (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    diagnostico_id INT NOT NULL,
+    tnm_t VARCHAR(10),
+    tnm_n VARCHAR(10),
+    tnm_m VARCHAR(10),
+    estadio_general VARCHAR(20),
+    metodo_evaluacion VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (diagnostico_id) REFERENCES DIAGNOSTICO(id) ON DELETE CASCADE
+);
+
+-- 8. QUIMIOTERAPIA
+CREATE TABLE QUIMIOTERAPIA (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    paciente_id INT NOT NULL,
+    diagnostico_id INT NOT NULL,
+    profesional_id INT NOT NULL,
+    numero_ciclo INT,
+    regimen VARCHAR(255),
+    fecha_inicio DATE,
+    fecha_fin DATE,
+    estado VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES PACIENTE(id) ON DELETE CASCADE,
+    FOREIGN KEY (diagnostico_id) REFERENCES DIAGNOSTICO(id) ON DELETE CASCADE,
+    FOREIGN KEY (profesional_id) REFERENCES PROFESIONAL_SALUD(id) ON DELETE CASCADE
+);
+
+-- 9. ESTUDIO_RADIOLOGICO
+CREATE TABLE ESTUDIO_RADIOLOGICO (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    paciente_id INT NOT NULL,
+    profesional_id INT NOT NULL,
+    study_instance_uid VARCHAR(255),
+    series_instance_uid VARCHAR(255),
+    modalidad VARCHAR(20),
+    ruta_dicom VARCHAR(500),
+    fecha_estudio DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES PACIENTE(id) ON DELETE CASCADE,
+    FOREIGN KEY (profesional_id) REFERENCES PROFESIONAL_SALUD(id) ON DELETE CASCADE
+);
