@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search } from 'lucide-react'; // 1. Agregado "Search"
 import api from '../../services/api';
 
 const PatientList = () => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState(''); // 2. Estado para la búsqueda
 
   const fetchPatients = async () => {
     try {
@@ -34,8 +35,25 @@ const PatientList = () => {
     }
   };
 
+  // 3. Lógica de filtrado adaptada al estándar FHIR de tu proyecto
+  const filteredPatients = patients.filter((patient) => {
+    const term = searchTerm.toLowerCase();
+    const identifier = patient.identifier?.[0]?.value || '';
+    const family = patient.name?.[0]?.family || '';
+    const given = patient.name?.[0]?.given?.join(' ') || '';
+    const fullName = `${given} ${family}`.toLowerCase();
+    const idFhir = patient.id || '';
+
+    return (
+      identifier.toLowerCase().includes(term) ||
+      fullName.includes(term) ||
+      idFhir.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="bg-white rounded-xl shadow-sm border p-6">
+      {/* ENCABEZADO */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Directorio de Pacientes</h2>
@@ -48,6 +66,20 @@ const PatientList = () => {
           <Plus size={18} />
           Nuevo Paciente
         </Link>
+      </div>
+
+      {/* 4. CAMPO DE BÚSQUEDA */}
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Buscar por Documento (DUI), Nombre completo o ID FHIR..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-slate-700"
+        />
       </div>
 
       {loading ? (
@@ -66,15 +98,15 @@ const PatientList = () => {
               </tr>
             </thead>
             <tbody>
-              {patients.length === 0 ? (
+              {filteredPatients.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="text-center py-8 text-slate-500">
-                    No hay pacientes registrados. ¡Agrega uno nuevo!
+                    {searchTerm ? `No se encontraron pacientes para "${searchTerm}".` : 'No hay pacientes registrados. ¡Agrega uno nuevo!'}
                   </td>
                 </tr>
               ) : (
-                patients.map((patient) => {
-                  // Mapear desde el formato FHIR
+                /* 5. Mapeo de la lista filtrada */
+                filteredPatients.map((patient) => {
                   const identifier = patient.identifier?.[0]?.value || 'N/A';
                   const family = patient.name?.[0]?.family || '';
                   const given = patient.name?.[0]?.given?.join(' ') || '';
@@ -125,3 +157,4 @@ const PatientList = () => {
 };
 
 export default PatientList;
+
